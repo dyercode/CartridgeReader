@@ -27,15 +27,14 @@ volatile uint16_t tx_shift_reg = 0;
 volatile uint16_t addr_tmp = 0;
 
 // void uart_init(void)
-// void pins(uint8_t pin, uint8_t state)
-void pins(uint8_t pin, uint8_t state);
+void setPin(uint8_t pin, uint8_t state);
 void uartTx(char character);
 void uartTxString(char *string);
 void blit(int8_t address, int8_t chipSelect);
 
 ISR(TIM0_COMPA_vect) {
-  // pins(TX_PIN,1);
-  // pins(TX_PIN,0);
+  // setPin(TX_PIN,1);
+  // setPin(TX_PIN,0);
   // output LSB of the TX shift register at the TX pin
   if (tx_shift_reg & 0x01) {
     PORTB |= (1 << TX_PIN);
@@ -90,7 +89,7 @@ int main(void) {
 
   sei();
 
-  blit(0,0b1111); // reset the shift registers
+  blit(0, 0b1111); // reset the shift registers
   uartTxString("initialized...");
 
   /* Replace with your application code */
@@ -123,13 +122,13 @@ void iterateCart() {
 
   /*	tiny pins
           1 reset (for now)
-              2 pb input (for now)
-              3
-              4 ground
-              5 sipo data
-              6 sipo latch
-              7 spio clock
-      */
+          2 pb input (for now)
+          3
+          4 ground
+          5 sipo data
+          6 sipo latch
+          7 spio clock
+  */
 
   /*
    design shift register output
@@ -163,31 +162,25 @@ void iterateCart() {
 }
 
 void shiftOut(int8_t bit) {
-  // set data pin
-  if (1 & bit) {
-    PORTB |= (1 << OUT_DATA);
-  } else {
-    PORTB &= ~(1 << OUT_DATA);
-  }
-  // clock high
-  PORTB |= (1 << OUT_CLOCK);
+  setPin(OUT_DATA, 1 & bit);
+
+  setPin(OUT_CLOCK, 1);
   _delay_ms(DIGITAL_DELAY);
-  // clock low
-  PORTB &= ~(1 << OUT_CLOCK);
+  setPin(OUT_CLOCK, 0);
   _delay_ms(DIGITAL_DELAY);
 }
 
-void blit(int8_t address, int8_t chipSelect) {
+void blit(int16_t address, int8_t chipSelect) {
   // shift all the bits
-  int8_t local_address = address;
+  int16_t local_address = address;
   for (int8_t i = 0; i < ADDRESS_BIT_COUNT; i++) {
     shiftOut(local_address & 0b1);
     local_address = local_address >> 1;
   }
   // pulse latch
-  PORTB |= (1 << OUT_LATCH);
+  setPin(OUT_LATCH, 1);
   _delay_ms(DIGITAL_DELAY);
-  PORTB &= ~(1 << OUT_LATCH);
+  setPin(OUT_LATCH, 0);
   _delay_ms(DIGITAL_DELAY);
 }
 
@@ -215,7 +208,7 @@ void uartTxString(char *string) {
   }
 }
 
-void pins(uint8_t pin, uint8_t state) {
+void setPin(uint8_t pin, uint8_t state) {
   if (state) {
     PORTB |= (1 << pin);
   } else {
