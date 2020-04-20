@@ -132,7 +132,7 @@ void iterateCart() {
           6 sipo latch
           7 spio clock
   */
-
+// int16_t range = 0x1fff
   /*
    design shift register output
     0 ADDRESS_01
@@ -182,7 +182,6 @@ void shiftMany(int16_t data, int8_t size) {
 }
 
 void blit(int16_t address, int8_t chipSelect) {
-
   // shift in chipSelect first
   shiftMany(chipSelect, 4);
 
