@@ -100,6 +100,9 @@ int main(void) {
     // should be enough for reading. though I haven't looked into them yet.
     // uartTxString("hello");
     //_delay_ms(100);
+
+    // iterateCart(); this needs to be triggered by something so it only happens
+    // once. or just drop it out of the while loop.
   }
 }
 
@@ -170,13 +173,22 @@ void shiftOut(int8_t bit) {
   _delay_ms(DIGITAL_DELAY);
 }
 
-void blit(int16_t address, int8_t chipSelect) {
-  // shift all the bits
-  int16_t local_address = address;
-  for (int8_t i = 0; i < ADDRESS_BIT_COUNT; i++) {
-    shiftOut(local_address & 0b1);
-    local_address = local_address >> 1;
+void shiftMany(int16_t data, int8_t size) {
+  int16_t local = data;
+  for (int8_t i = 0; i < size; i++) {
+    shiftOut(local & 0b1);
+    local = local >> 1;
   }
+}
+
+void blit(int16_t address, int8_t chipSelect) {
+
+  // shift in chipSelect first
+  shiftMany(chipSelect, 4);
+
+  // shift all the bits
+  shiftMany(address, ADDRESS_BIT_COUNT);
+
   // pulse latch
   setPin(OUT_LATCH, 1);
   _delay_ms(DIGITAL_DELAY);
