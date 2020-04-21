@@ -27,14 +27,14 @@ volatile uint16_t tx_shift_reg = 0;
 volatile uint16_t addr_tmp = 0;
 
 // void uart_init(void)
-void setPin(uint8_t pin, uint8_t state);
-void uartTx(char character);
-void uartTxString(char *string);
-void blit(int8_t address, int8_t chipSelect);
+void set_pin(uint8_t pin, uint8_t state);
+void uart_tx(char character);
+void uart_tx_string(char *string);
+void blit(int8_t address, int8_t chip_select);
 
 ISR(TIM0_COMPA_vect) {
-  // setPin(TX_PIN,1);
-  // setPin(TX_PIN,0);
+  // set_pin(TX_PIN,1);
+  // set_pin(TX_PIN,0);
   // output LSB of the TX shift register at the TX pin
   if (tx_shift_reg & 0x01) {
     PORTB |= (1 << TX_PIN);
@@ -90,7 +90,7 @@ int main(void) {
   sei();
 
   blit(0, 0b1111); // reset the shift registers
-  uartTxString("initialized...");
+  uart_tx_string("initialized...");
 
   /* Replace with your application code */
   while (1) {
@@ -98,10 +98,10 @@ int main(void) {
     // Cart slot has 15 address pins and 4 chip select pins. so going to need 3
     // shift registers (8 outputs a piece) for 19 outputs. 8 dataports so 1 piso
     // should be enough for reading. though I haven't looked into them yet.
-    // uartTxString("hello");
+    // uart_tx_string("hello");
     //_delay_ms(100);
 
-    // iterateCart(); this needs to be triggered by something so it only happens
+    // iterate_cart(); this needs to be triggered by something so it only happens
     // once. or just drop it out of the while loop.
   }
 }
@@ -113,7 +113,7 @@ uint8_t piso() {
   return 0;
 }
 
-void iterateCart() {
+void iterate_cart() {
   /*
   The four chip select pins on the cartridge correspond to the four ROM chips
   that may be present in the cartridge. The first chip select pin (Chip Select
@@ -132,7 +132,16 @@ void iterateCart() {
           6 sipo latch
           7 spio clock
   */
-// int16_t range = 0x1fff
+
+/*
+  int16_t range = 0x1fff
+  blit(addr, chip_select)
+  latch_piso()
+  let byte = readData()
+  let strByte = convert byte to string
+  uart_tx_string(strByte)
+*/
+
   /*
    design shift register output
     0 ADDRESS_01
@@ -164,38 +173,38 @@ void iterateCart() {
   */
 }
 
-void shiftOut(int8_t bit) {
-  setPin(OUT_DATA, 1 & bit);
+void shift_out(int8_t bit) {
+  set_pin(OUT_DATA, 1 & bit);
 
-  setPin(OUT_CLOCK, 1);
+  set_pin(OUT_CLOCK, 1);
   _delay_ms(DIGITAL_DELAY);
-  setPin(OUT_CLOCK, 0);
+  set_pin(OUT_CLOCK, 0);
   _delay_ms(DIGITAL_DELAY);
 }
 
-void shiftMany(int16_t data, int8_t size) {
+void shift_many(int16_t data, int8_t size) {
   int16_t local = data;
   for (int8_t i = 0; i < size; i++) {
-    shiftOut(local & 0b1);
+    shift_out(local & 0b1);
     local = local >> 1;
   }
 }
 
-void blit(int16_t address, int8_t chipSelect) {
-  // shift in chipSelect first
-  shiftMany(chipSelect, 4);
+void blit(int16_t address, int8_t chip_select) {
+  // shift in chip_select first
+  shift_many(chip_select, 4);
 
   // shift all the bits
-  shiftMany(address, ADDRESS_BIT_COUNT);
+  shift_many(address, ADDRESS_BIT_COUNT);
 
   // pulse latch
-  setPin(OUT_LATCH, 1);
+  set_pin(OUT_LATCH, 1);
   _delay_ms(DIGITAL_DELAY);
-  setPin(OUT_LATCH, 0);
+  set_pin(OUT_LATCH, 0);
   _delay_ms(DIGITAL_DELAY);
 }
 
-void uartTx(char character) {
+void uart_tx(char character) {
   uint16_t local_tx_shift_reg = tx_shift_reg;
   // if sending the previous character is not yet finished, return
   // transmission is finished when tx_shift_reg == 0
@@ -210,16 +219,16 @@ void uartTx(char character) {
   TCCR0B = (1 << CS01);
 }
 
-void uartTxString(char *string) {
+void uart_tx_string(char *string) {
   while (*string) {
-    uartTx(*string++);
+    uart_tx(*string++);
     // wait until transmission is finished
     while (tx_shift_reg)
       ;
   }
 }
 
-void setPin(uint8_t pin, uint8_t state) {
+void set_pin(uint8_t pin, uint8_t state) {
   if (state) {
     PORTB |= (1 << pin);
   } else {
