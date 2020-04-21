@@ -1,8 +1,11 @@
 /*
  * EpromReader.c
  */
-#define F_CPU 8000000UL
+
+#define FOSC 1843200 // Clock Speed
+//#define F_CPU 8000000UL
 #define BAUD 9600
+#define MYUBRR FOSC/16/BAUD-1
 #define TX_PIN PB4 // Pin 3
 #define TX_PIN_SET DDB4
 #define OUT_DATA PB0 // Pin 5
@@ -58,6 +61,17 @@ ISR(PCINT0_vect) {
   }
 }
 
+void usart_init( unsigned int ubrr)
+{
+/*Set baud rate */
+UBRR0H = (unsigned char)(ubrr>>8);
+UBRR0L = (unsigned char)ubrr;
+Enable receiver and transmitter */
+UCSR0B = (1<<RXEN0)|(1<<TXEN0);
+/* Set frame format: 8data, 2stop bit */
+UCSR0C = (1<<USBS0)|(3<<UCSZ00);
+}
+
 int main(void) {
   // CLKPR = 0b10000000;
   CLKPR = 0x80; // set system clock to 8mhz with no prescale
@@ -72,6 +86,7 @@ int main(void) {
   // CLKPS2 = 0;
   // CLKPS3 = 0;
 
+  usart_init(MYUBRR);
   // no prescaling cs02: 0, cs01: 0, cs00: 0
   // CTC mode 2, wgm02: 0, wgm01: 1, wgm00: 0
   TCCR0A = (1 << WGM01);
@@ -126,7 +141,7 @@ void iterate_cart() {
   /*	tiny pins
           1 reset (for now)
           2 pb input (for now)
-          3
+          3 serial tx
           4 ground
           5 sipo data
           6 sipo latch
@@ -137,7 +152,7 @@ void iterate_cart() {
   int16_t range = 0x1fff
   blit(addr, chip_select)
   latch_piso()
-  let byte = readData()
+  let byte = read_data()
   let strByte = convert byte to string
   uart_tx_string(strByte)
 */
@@ -205,18 +220,10 @@ void blit(int16_t address, int8_t chip_select) {
 }
 
 void uart_tx(char character) {
-  uint16_t local_tx_shift_reg = tx_shift_reg;
-  // if sending the previous character is not yet finished, return
-  // transmission is finished when tx_shift_reg == 0
-  if (local_tx_shift_reg) {
-    return;
-  }
-  // fill the TX shift register witch the character to be sent and the start &
-  // stop bits (start bit (1<<0) is already 0)
-  local_tx_shift_reg = (character << 1) | (1 << 9); // stop bit (1<<9)
-  tx_shift_reg = local_tx_shift_reg;
-  // start timer0 with a prescaler of 8
-  TCCR0B = (1 << CS01);
+  /* Wait for empty transmit buffer */
+  while ( !( UCSR0A & (1<<UDRE0)) );
+  /* Put data into buffer, sends the data */
+  UDR0 = data;
 }
 
 void uart_tx_string(char *string) {
