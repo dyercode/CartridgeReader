@@ -15,7 +15,7 @@
 #define MANUAL_TICK PC3               // Pin 26
 #define MANUAL_TICK_INTERRUPT PCINT11 // Pin 26
 #define EPROM_SIZE 0x1FFF
-#define DIGITAL_DELAY_US 10
+#define DIGITAL_DELAY_US 0
 #define ADDRESS_BIT_COUNT 8 // for testing since I'm short a shift register.
 
 #include <avr/interrupt.h>
@@ -122,7 +122,7 @@ void iterate_cart() {
     uint8_t chip_select = chip_bin(cs);
     uint16_t offset = 0x2000 * (cs - 1);
     uint16_t top = base + offset + range;
-    for (uint16_t addr = base + offset; addr <= top; addr++) {
+    for (uint32_t addr = base + offset; addr <= top; addr++) {
       set_address(addr, chip_select);
       _delay_us(DIGITAL_DELAY_US);
 
