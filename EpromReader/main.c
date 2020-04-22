@@ -22,9 +22,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-// delete meeee
-volatile uint16_t addr_tmp = 0;
-
 void set_pin(uint8_t pin, uint8_t state);
 void uart_tx(char character);
 void uart_tx_string(char *string);
@@ -37,8 +34,6 @@ void pulse_low(uint8_t pin);
 
 ISR(PCINT1_vect) {
   if (PINC & (1 << MANUAL_TICK)) {
-    addr_tmp += 1;
-    set_address(addr_tmp, 0b1111);
   }
 }
 
