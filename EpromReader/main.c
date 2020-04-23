@@ -23,6 +23,7 @@
 #define EPROM_SIZE 0x1FFF
 #define DIGITAL_DELAY_US 10
 #define ADDRESS_BIT_COUNT 15 // for testing since I'm short a shift register.
+#define EOF -1
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -64,7 +65,6 @@ int main(void) {
 
   DDRB |= (1 << OUT_DATA_SET | 1 << OUT_LATCH_SET | 1 << OUT_CLOCK_SET |
            1 << IN_LATCH_SET | 1 << IN_CLOCK_SET); // mark output pins as such
-
 
   // CLKPCE = 1; // look this up
   // CLKPS0 = 0;
@@ -111,7 +111,7 @@ uint8_t read_eprom_byte() {
     pulse_high(IN_CLOCK);
     fish |= (PINB & (1 << IN_DATA)) << i;
   }
-  return hexies[fish];
+  return fish;
 }
 
 uint8_t chip_bin(uint8_t n) { return 0b1111 & ~(1 << (4 - n)); }
@@ -138,10 +138,10 @@ void iterate_cart() {
 
       // latch_piso();
       uint8_t byte = read_eprom_byte();
-	  characterize(byte);
+      characterize(byte);
     }
   }
-  // uart_tx(EOF); not sure if will is work are
+  uart_tx(EOF); // not sure if will is work are
 
   /*
    design shift register output
@@ -232,7 +232,6 @@ void pulse_low(uint8_t pin) {
   set_pin(pin, 0);
   set_pin(pin, 1);
 }
-
 
 void pulse(uint8_t pin, uint8_t high) {
   set_pin(pin, high & 0b1);
