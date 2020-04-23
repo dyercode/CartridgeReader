@@ -6,21 +6,20 @@
 #define F_CPU 8000000UL
 #define BAUD 9600
 #define MYUBRR F_CPU / 16 / BAUD - 1
-#define OUT_DATA PC0 // Pin 23
-#define OUT_DATA_SET DDC0
-#define OUT_LATCH PC1                 // Pin 24
-#define OUT_LATCH_SET DDC1            // Pin 24
-#define OUT_CLOCK PC2                 // Pin 25
-#define OUT_CLOCK_SET DDC2            // Pin 25
-#define MANUAL_TICK PC3               // Pin 26
-#define MANUAL_TICK_INTERRUPT PCINT11 // Pin 26
+#define OUT_DATA PB0 // Pin 23
+#define OUT_DATA_SET DDB0
+#define OUT_LATCH PB1                 // Pin 24
+#define OUT_LATCH_SET DDB1            // Pin 24
+#define OUT_CLOCK PB2                 // Pin 25
+#define OUT_CLOCK_SET DDB2            // Pin 25
+//#define MANUAL_TICK PC3               // Pin 26
+//#define MANUAL_TICK_INTERRUPT PCINT11 // Pin 26
 #define EPROM_SIZE 0x1FFF
-#define DIGITAL_DELAY_US 0
-#define ADDRESS_BIT_COUNT 8 // for testing since I'm short a shift register.
+#define DIGITAL_DELAY_US 10
+#define ADDRESS_BIT_COUNT 15 // for testing since I'm short a shift register.
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <util/delay.h>
 
 void set_pin(uint8_t pin, uint8_t state);
 void uart_tx(char character);
@@ -32,10 +31,12 @@ void pulse(uint8_t pin, uint8_t high);
 void pulse_high(uint8_t pin);
 void pulse_low(uint8_t pin);
 
+/*
 ISR(PCINT1_vect) {
   if (PINC & (1 << MANUAL_TICK)) {
   }
 }
+*/
 
 void usart_init(unsigned int ubrr) {
   /*Set baud rate */
@@ -43,7 +44,7 @@ void usart_init(unsigned int ubrr) {
   UBRR0L = (unsigned char)ubrr;
   /* Enable receiver and transmitter */
   UCSR0B = (1 << RXEN0) | (1 << TXEN0);
-  /* Set frame format: 8data, 2stop bit */
+  /* Set frame format: 8data, 1stop bit */
   UCSR0C = (0 << USBS0) | (3 << UCSZ00);
 }
 
@@ -54,7 +55,7 @@ int main(void) {
 
   usart_init(MYUBRR);
 
-  DDRC |= (1 << OUT_DATA_SET | 1 << OUT_LATCH_SET |
+  DDRB |= (1 << OUT_DATA_SET | 1 << OUT_LATCH_SET |
            1 << OUT_CLOCK_SET); // mark output pins as such
 
   // CLKPCE = 1; // look this up
@@ -68,8 +69,8 @@ int main(void) {
   // TCCR0A = (1 << WGM01);
   // TCCR0B = 0b00000000;
 
-  PCICR |= (1 << PCIE1);   // pin change interrupt enable
-  PCMSK1 |= (1 << PCINT3); // pin change interrupt for PB3
+  // PCICR |= (1 << PCIE1);   // pin change interrupt enable
+  // PCMSK1 |= (1 << PCINT3); // pin change interrupt for PB3
 
   sei();
 
@@ -84,7 +85,6 @@ int main(void) {
     // shift registers (8 outputs a piece) for 19 outputs. 8 dataports so 1 piso
     // should be enough for reading. though I haven't looked into them yet.
     // uart_tx_string("hello");
-    //_delay_ms(100);
 
     // iterate_cart(); this needs to be triggered by something so it only
     // happens once. or just drop it out of the while loop.
@@ -119,7 +119,6 @@ void iterate_cart() {
     uint16_t top = base + offset + range;
     for (uint32_t addr = base + offset; addr <= top; addr++) {
       set_address(addr, chip_select);
-      _delay_us(DIGITAL_DELAY_US);
 
       // latch_piso();
       // char byte = read_eprom_byte();
@@ -211,9 +210,9 @@ void uart_tx_string(char *string) {
 
 void set_pin(uint8_t pin, uint8_t state) {
   if (state) {
-    PORTC |= (1 << pin);
+    PORTB |= (1 << pin);
   } else {
-    PORTC &= ~(1 << pin);
+    PORTB &= ~(1 << pin);
   }
 }
 
@@ -223,7 +222,5 @@ void pulse_low(uint8_t pin) { pulse(pin, 0); }
 
 void pulse(uint8_t pin, uint8_t high) {
   set_pin(pin, high & 0b1);
-  _delay_us(DIGITAL_DELAY_US);
   set_pin(pin, (~high & 0b1)>>1);
-  _delay_us(DIGITAL_DELAY_US);
 }
