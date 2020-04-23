@@ -32,7 +32,7 @@ void uart_tx(char character);
 void uart_tx_string(char *string);
 void set_address(uint16_t address, uint8_t chip_select);
 void iterate_cart();
-void characterize(uint16_t d);
+void characterize(uint8_t d);
 void pulse(uint8_t pin, uint8_t high);
 void pulse_high(uint8_t pin);
 void pulse_low(uint8_t pin);
@@ -64,7 +64,7 @@ int main(void) {
 
   DDRB |= (1 << OUT_DATA_SET | 1 << OUT_LATCH_SET | 1 << OUT_CLOCK_SET |
            1 << IN_LATCH_SET | 1 << IN_CLOCK_SET); // mark output pins as such
-		   PORTB |= (0 << )
+
 
   // CLKPCE = 1; // look this up
   // CLKPS0 = 0;
@@ -82,6 +82,7 @@ int main(void) {
 
   sei();
 
+  set_pin(IN_LATCH, 1);
   set_address(0, 0b1111); // reset the shift registers
   uart_tx_string("initialized...\r\n");
 
@@ -99,11 +100,11 @@ int main(void) {
   }
 }
 
-char read_eprom_byte() {
+uint8_t read_eprom_byte() {
   /*
   PL (Parallel load) has to be tied high. pulse it low to latch the inputs.
   */
-  pulse_high(IN_LATCH_SET);
+  pulse_low(IN_LATCH);
 
   uint8_t fish = 0;
   for (uint8_t i = 0; i < 8; i++) {
@@ -136,9 +137,8 @@ void iterate_cart() {
       set_address(addr, chip_select);
 
       // latch_piso();
-      char byte = read_eprom_byte();
-      uart_tx(byte);
-      //      characterize(addr);
+      uint8_t byte = read_eprom_byte();
+	  characterize(byte);
     }
   }
   // uart_tx(EOF); not sure if will is work are
@@ -183,15 +183,11 @@ void shift_many(uint16_t data, uint8_t size) {
   }
 }
 
-void characterize(uint16_t d) {
-  unsigned char first_byte = ((d >> 12) & 0b1111);
-  unsigned char second_byte = ((d >> 8) & 0b1111);
-  unsigned char third_byte = ((d >> 4) & 0b1111);
-  unsigned char fourth_byte = (d & 0b1111);
-  uart_tx(hexies[first_byte]);
-  uart_tx(hexies[second_byte]);
-  uart_tx(hexies[third_byte]);
-  uart_tx(hexies[fourth_byte]);
+void characterize(uint8_t d) {
+  unsigned char first_digit = ((d >> 4) & 0b1111);
+  unsigned char second_digit = (d & 0b1111);
+  uart_tx(hexies[first_digit]);
+  uart_tx(hexies[second_digit]);
   uart_tx(' ');
 }
 
@@ -232,7 +228,11 @@ void set_pin(uint8_t pin, uint8_t state) {
 
 void pulse_high(uint8_t pin) { pulse(pin, 1); }
 
-void pulse_low(uint8_t pin) { pulse(pin, 0); }
+void pulse_low(uint8_t pin) {
+  set_pin(pin, 0);
+  set_pin(pin, 1);
+}
+
 
 void pulse(uint8_t pin, uint8_t high) {
   set_pin(pin, high & 0b1);
