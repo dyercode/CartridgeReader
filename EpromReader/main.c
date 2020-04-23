@@ -8,10 +8,16 @@
 #define MYUBRR F_CPU / 16 / BAUD - 1
 #define OUT_DATA PB0 // Pin 23
 #define OUT_DATA_SET DDB0
-#define OUT_LATCH PB1                 // Pin 24
-#define OUT_LATCH_SET DDB1            // Pin 24
-#define OUT_CLOCK PB2                 // Pin 25
-#define OUT_CLOCK_SET DDB2            // Pin 25
+#define OUT_LATCH PB1      // Pin 24
+#define OUT_LATCH_SET DDB1 // Pin 24
+#define OUT_CLOCK PB2      // Pin 25
+#define OUT_CLOCK_SET DDB2 // Pin 25
+#define IN_DATA PB3        // Pin 17
+#define IN_DATA_SET DDB3   // Pin 17
+#define IN_LATCH PB4       // Pin 18
+#define IN_LATCH_SET DDB4  // Pin 18
+#define IN_CLOCK PB5       // Pin 19
+#define IN_CLOCK_SET DDB5  // Pin 19
 //#define MANUAL_TICK PC3               // Pin 26
 //#define MANUAL_TICK_INTERRUPT PCINT11 // Pin 26
 #define EPROM_SIZE 0x1FFF
@@ -30,6 +36,7 @@ void characterize(uint16_t d);
 void pulse(uint8_t pin, uint8_t high);
 void pulse_high(uint8_t pin);
 void pulse_low(uint8_t pin);
+const unsigned char hexies[] = "0123456789ABCDEF";
 
 /*
 ISR(PCINT1_vect) {
@@ -55,8 +62,9 @@ int main(void) {
 
   usart_init(MYUBRR);
 
-  DDRB |= (1 << OUT_DATA_SET | 1 << OUT_LATCH_SET |
-           1 << OUT_CLOCK_SET); // mark output pins as such
+  DDRB |= (1 << OUT_DATA_SET | 1 << OUT_LATCH_SET | 1 << OUT_CLOCK_SET |
+           1 << IN_LATCH_SET | 1 << IN_CLOCK_SET); // mark output pins as such
+		   PORTB |= (0 << )
 
   // CLKPCE = 1; // look this up
   // CLKPS0 = 0;
@@ -95,7 +103,14 @@ char read_eprom_byte() {
   /*
   PL (Parallel load) has to be tied high. pulse it low to latch the inputs.
   */
-  return 'F';
+  pulse_high(IN_LATCH_SET);
+
+  uint8_t fish = 0;
+  for (uint8_t i = 0; i < 8; i++) {
+    pulse_high(IN_CLOCK);
+    fish |= (PINB & (1 << IN_DATA)) << i;
+  }
+  return hexies[fish];
 }
 
 uint8_t chip_bin(uint8_t n) { return 0b1111 & ~(1 << (4 - n)); }
@@ -121,9 +136,9 @@ void iterate_cart() {
       set_address(addr, chip_select);
 
       // latch_piso();
-      // char byte = read_eprom_byte();
-      // uart_tx(byte);
-      characterize(addr);
+      char byte = read_eprom_byte();
+      uart_tx(byte);
+      //      characterize(addr);
     }
   }
   // uart_tx(EOF); not sure if will is work are
@@ -169,7 +184,6 @@ void shift_many(uint16_t data, uint8_t size) {
 }
 
 void characterize(uint16_t d) {
-  const unsigned char hexies[] = "0123456789ABCDEF";
   unsigned char first_byte = ((d >> 12) & 0b1111);
   unsigned char second_byte = ((d >> 8) & 0b1111);
   unsigned char third_byte = ((d >> 4) & 0b1111);
@@ -222,5 +236,5 @@ void pulse_low(uint8_t pin) { pulse(pin, 0); }
 
 void pulse(uint8_t pin, uint8_t high) {
   set_pin(pin, high & 0b1);
-  set_pin(pin, (~high & 0b1)>>1);
+  set_pin(pin, (~high & 0b1) >> 1);
 }
